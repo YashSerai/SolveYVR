@@ -64,7 +64,7 @@ def _result_summary(name: str, raw: str) -> str:
             code = d.get("status_code", "")
             if ok:
                 body = d.get("json", {})
-                ref = body.get("ref", "") if isinstance(body, dict) else ""
+                ref = (body.get("reference_number") or body.get("ref", "")) if isinstance(body, dict) else ""
                 caseid = body.get("caseid", "") if isinstance(body, dict) else ""
                 parts = [f"Submitted successfully (status {code})"]
                 if ref:

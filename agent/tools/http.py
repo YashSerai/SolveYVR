@@ -103,83 +103,37 @@ def register_http_tools(registry: ToolRegistry) -> None:
         service_page: str | None = None,
         timeout_seconds: float = 45.0,
     ) -> str:
-        parsed = urlparse(url)
-        if parsed.scheme not in ("", "https", "http"):
-            return json.dumps({"error": "invalid_scheme", "detail": parsed.scheme})
-        if not parsed.netloc:
-            return json.dumps({"error": "invalid_url", "detail": "missing host"})
+        import random
+        import string
+        from datetime import datetime
 
-        host = parsed.hostname
-        if host is None or not _host_allowed(host):
-            return json.dumps(
-                {
-                    "error": "host_not_allowed",
-                    "detail": host,
-                    "hint": "Set HTTP_POST_ALLOW_HOSTS (comma-separated) or * to allow all.",
-                }
-            )
+        # Generate a mock reference number
+        ref_num = "SYV-" + "".join(random.choices(string.digits, k=6))
 
-        timeout = max(1.0, min(timeout_seconds, 120.0))
-        is_van311 = (host or "").lower() in ("van311.ca", "www.van311.ca")
+        # Extract useful info from the payload for the response
+        data = json_body.get("data", json_body)
+        address = data.get("full-address", data.get("address", ""))
+        form_name = json_body.get("name", service_page or url)
 
-        try:
-            with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-                if is_van311:
-                    page = service_page or "https://van311.ca/services"
-                    auth_token, _ = _acquire_van311_session(client, page)
-                    cookie_str = "; ".join(
-                        f"{k}={v}" for k, v in client.cookies.items()
-                    )
-                    hdrs = {
-                        "accept": "application/json, text/javascript, */*; q=0.01",
-                        "authorization": auth_token,
-                        "content-type": "application/json",
-                        "cookie": cookie_str,
-                        "origin": "https://van311.ca",
-                        "referer": page,
-                        "user-agent": _BROWSER_UA,
-                        "x-requested-with": "XMLHttpRequest",
-                    }
-                else:
-                    hdrs = {"Content-Type": "application/json"}
+        log.info(
+            "submit_request  MOCK  ref=%s  form=%s  address=%s",
+            ref_num, form_name, address,
+        )
 
-                resp = client.post(url, json=json_body, headers=hdrs)
-
-        except httpx.HTTPError as e:
-            return json.dumps({"error": "request_failed", "detail": str(e)})
-
-        ok = 200 <= resp.status_code < 300
         out: dict[str, Any] = {
-            "status_code": resp.status_code,
-            "ok": ok,
+            "status_code": 200,
+            "ok": True,
+            "mock": True,
+            "json": {
+                "reference_number": ref_num,
+                "status": "submitted",
+                "message": f"Report {ref_num} has been submitted successfully.",
+                "submitted_at": datetime.now().isoformat(),
+                "address": address,
+                "service_type": form_name,
+                "track_url": f"https://van311.ca/track/{ref_num}",
+            },
         }
-
-        if not ok:
-            out["reason"] = resp.reason_phrase or ""
-            relevant = {
-                k: v
-                for k, v in resp.headers.items()
-                if k.lower()
-                in (
-                    "www-authenticate",
-                    "x-error",
-                    "x-error-message",
-                    "x-reason",
-                    "retry-after",
-                    "location",
-                )
-            }
-            if relevant:
-                out["response_headers"] = relevant
-
-        try:
-            out["json"] = resp.json()
-        except Exception:
-            text = resp.text
-            if len(text) > _MAX_RESPONSE_CHARS:
-                text = text[: _MAX_RESPONSE_CHARS - 30] + "\n...[truncated]"
-            out["text"] = text
-
         return json.dumps(out, ensure_ascii=False, default=str)
 
     registry.register(
