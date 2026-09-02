@@ -15,15 +15,20 @@ const tabs = [
 
 /** Navigate to home when a report location is set from the map pin */
 function ReportLocationRouter() {
-  const { reportLocation } = useMapFocus();
+  const { reportRoutePending, consumeReportRoute } = useMapFocus();
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    if (reportLocation && pathname !== "/") {
+    if (!reportRoutePending) return;
+
+    if (pathname !== "/") {
       router.push("/");
+      return;
     }
-  }, [reportLocation, pathname, router]);
+
+    consumeReportRoute();
+  }, [reportRoutePending, pathname, router, consumeReportRoute]);
 
   return null;
 }

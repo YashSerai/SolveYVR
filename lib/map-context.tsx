@@ -25,7 +25,9 @@ interface MapContextValue {
   userLocation: LocationInfo | null;
 
   reportLocation: LocationInfo | null;
+  reportRoutePending: boolean;
   startReportAt: (loc: LocationInfo) => void;
+  consumeReportRoute: () => void;
   clearReportLocation: () => void;
 
   filters: Filters;
@@ -38,6 +40,7 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
   const [pendingFocus, setPendingFocus] = useState<Report | null>(null);
   const [userLocation, setUserLocation] = useState<LocationInfo | null>(null);
   const [reportLocation, setReportLocation] = useState<LocationInfo | null>(null);
+  const [reportRoutePending, setReportRoutePending] = useState(false);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
 
   const focusReport = useCallback((report: Report) => {
@@ -50,10 +53,16 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
 
   const startReportAt = useCallback((loc: LocationInfo) => {
     setReportLocation(loc);
+    setReportRoutePending(true);
+  }, []);
+
+  const consumeReportRoute = useCallback(() => {
+    setReportRoutePending(false);
   }, []);
 
   const clearReportLocation = useCallback(() => {
     setReportLocation(null);
+    setReportRoutePending(false);
   }, []);
 
   // Request geolocation on mount
@@ -80,7 +89,9 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
         clearFocus,
         userLocation,
         reportLocation,
+        reportRoutePending,
         startReportAt,
+        consumeReportRoute,
         clearReportLocation,
         filters,
         setFilters,
