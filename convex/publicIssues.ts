@@ -1,5 +1,8 @@
 import { query } from "./_generated/server";
-import { paginationOptsValidator } from "convex/server";
+import {
+  paginationOptsValidator,
+  type ExpressionOrValue,
+} from "convex/server";
 import { v } from "convex/values";
 
 export const list = query({
@@ -49,7 +52,7 @@ export const list = query({
 
     if (status && (local_area || department || service_request_type)) {
       q = q.filter((row) => {
-        let cond = true as any;
+        let cond: ExpressionOrValue<boolean> = true;
         if (local_area) cond = row.eq(row.field("local_area"), local_area);
         if (department) cond = row.eq(row.field("department"), department);
         if (service_request_type)
