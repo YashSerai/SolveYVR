@@ -1,32 +1,25 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ReportChat } from "@/components/report-chat";
-import { useMapFocus, type LocationInfo } from "@/lib/map-context";
+import { useMapFocus } from "@/lib/map-context";
 import ReportsPage from "@/app/reports/page";
 
 function HomeContent() {
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatLocation, setChatLocation] = useState<LocationInfo | null>(null);
-  const [chatKey, setChatKey] = useState(0);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { reportLocation, clearReportLocation } = useMapFocus();
+  const reportRequested = searchParams.get("report") === "1";
+  const chatOpen = reportRequested || reportLocation !== null;
+  const chatKey = reportLocation
+    ? `${reportLocation.lat}:${reportLocation.lng}:${reportLocation.address ?? ""}`
+    : "new-report";
 
-  useEffect(() => {
-    if (searchParams.get("report") === "1") {
-      setChatOpen(true);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (reportLocation) {
-      setChatLocation(reportLocation);
-      setChatKey((k) => k + 1);
-      setChatOpen(true);
-      clearReportLocation();
-    }
-  }, [reportLocation, clearReportLocation]);
+  function closeChat() {
+    clearReportLocation();
+    if (reportRequested) router.replace("/");
+  }
 
   if (chatOpen) {
     return (
@@ -35,22 +28,16 @@ function HomeContent() {
         <div className="fixed inset-0 z-50 flex flex-col bg-background md:hidden">
           <ReportChat
             key={chatKey}
-            onClose={() => {
-              setChatOpen(false);
-              setChatLocation(null);
-            }}
-            initialLocation={chatLocation}
+            onClose={closeChat}
+            initialLocation={reportLocation}
           />
         </div>
         {/* Desktop: fits within the panel */}
         <div className="absolute inset-0 hidden flex-col md:flex">
           <ReportChat
             key={chatKey}
-            onClose={() => {
-              setChatOpen(false);
-              setChatLocation(null);
-            }}
-            initialLocation={chatLocation}
+            onClose={closeChat}
+            initialLocation={reportLocation}
           />
         </div>
       </>

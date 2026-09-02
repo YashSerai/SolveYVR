@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { FileText, ExternalLink, MapPin, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,17 @@ function formatDate(epoch: number): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+const EMPTY_REPORTS_SNAPSHOT = "[]";
+const subscribeToReports = () => () => {};
+
+function getReportsSnapshot(): string {
+  return JSON.stringify(getSubmittedReports());
+}
+
+function getServerReportsSnapshot(): string {
+  return EMPTY_REPORTS_SNAPSHOT;
 }
 
 function ReportItem({ report }: { report: SubmittedReport }) {
@@ -73,11 +84,15 @@ function ReportItem({ report }: { report: SubmittedReport }) {
 }
 
 export default function MyReportsPage() {
-  const [reports, setReports] = useState<SubmittedReport[]>([]);
-
-  useEffect(() => {
-    setReports(getSubmittedReports());
-  }, []);
+  const reportsSnapshot = useSyncExternalStore(
+    subscribeToReports,
+    getReportsSnapshot,
+    getServerReportsSnapshot
+  );
+  const reports = useMemo(
+    () => JSON.parse(reportsSnapshot) as SubmittedReport[],
+    [reportsSnapshot]
+  );
 
   if (reports.length === 0) {
     return (
